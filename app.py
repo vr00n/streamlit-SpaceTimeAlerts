@@ -84,7 +84,7 @@ if uploaded_file:
         # Convert H3 codes to latitude and longitude for mapping
         influx_events["lat"], influx_events["lon"] = zip(*influx_events["hex_id"].apply(h3.h3_to_geo))
 
-         map_data = influx_events.drop(columns=['raw_rows'])
+        map_data = influx_events.drop(columns=['raw_rows'])
 
         # Display results on map
         view_state = pdk.ViewState(
