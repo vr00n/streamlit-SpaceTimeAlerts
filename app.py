@@ -69,48 +69,49 @@ if uploaded_file:
     spatial_resolution = st.slider("Choose H3 Spatial Resolution (0-15):", 0, 15, 7)
     time_bin = st.slider("Choose Temporal Window (in minutes):", 15, 180, 60)
 
-    if st.button('Process Data'):
-        # Fetch influx events
-        influx_events = spatid_v3(df, lat_col, lon_col, time_col, date_col, time_bin, spatial_resolution)
+...
 
-        # Initialize Google Maps API
-        gmaps = googlemaps.Client(key='AIzaSyBIn9U1eB5eYb8fD9N3hR-2Rhm8yP2G5Pk')
+if st.button('Process Data'):
+    # Fetch influx events
+    influx_events = spatid_v3(df, lat_col, lon_col, time_col, date_col, time_bin, spatial_resolution)
 
+    # Initialize Google Maps API
+    gmaps = googlemaps.Client(key='AIzaSyBIn9U1eB5eYb8fD9N3hR-2Rhm8yP2G5Pk')
 
-        # Get address for each H3 code
-        influx_events["address"] = influx_events["hex_id"].apply(lambda x: h3_to_address(x, gmaps))
+    # Get address for each H3 code
+    influx_events["address"] = influx_events["hex_id"].apply(lambda x: h3_to_address(x, gmaps))
 
+    # Convert H3 codes to latitude and longitude for mapping
+    influx_events["lat"], influx_events["lon"] = zip(*influx_events["hex_id"].apply(h3.h3_to_geo))
+    
+    # Create a copy of influx_events without the 'raw_rows' column for mapping
+    map_data = influx_events.drop(columns=['raw_rows'])
 
-        # Convert H3 codes to latitude and longitude for mapping
-        influx_events["lat"], influx_events["lon"] = zip(*influx_events["hex_id"].apply(h3.h3_to_geo))
-
-        map_data = influx_events.drop(columns=['raw_rows'])
-
-        # Display results on map
-        view_state = pdk.ViewState(
-            latitude=influx_events["lat"].mean(),
-            longitude=influx_events["lon"].mean(),
-            zoom=10
-        )
-        layer = pdk.Layer(
-            "HexagonLayer",
-            data=map_data,
-            get_hexagon="hex_id",
-            get_position=["lon", "lat"],
-            get_fill_color="[255, 0, 0]",
-            get_line_color="[0, 0, 0]",
-            filled=True,
-            stroked=True,
-            extruded=True,
-            pickable=True
-        )
-        tooltip = {
-            "html": "<b>Address:</b> {address}<br/><b>Incident Count:</b> {Incident_count}",
-            "style": {"backgroundColor": "steelblue", "color": "white"}
-        }
-        st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
-        
-        # Additional code to display raw rows (optional)
-        selected_hex = st.selectbox("Select a hex to view its raw rows:", influx_events['hex_id'].unique())
-        selected_rows = influx_events[influx_events['hex_id'] == selected_hex]['raw_rows'].iloc[0]
-        st.write(pd.DataFrame(selected_rows))
+    # Display results on map
+    view_state = pdk.ViewState(
+        latitude=influx_events["lat"].mean(),
+        longitude=influx_events["lon"].mean(),
+        zoom=10
+    )
+    layer = pdk.Layer(
+        "HexagonLayer",
+        data=map_data,
+        get_hexagon="hex_id",
+        get_position=["lon", "lat"],
+        get_fill_color="[255, 0, 0]",
+        get_line_color="[0, 0, 0]",
+        filled=True,
+        stroked=True,
+        extruded=True,
+        pickable=True
+    )
+    tooltip = {
+        "html": "<b>Address:</b> {address}<br/><b>Incident Count:</b> {Incident_count}",
+        "style": {"backgroundColor": "steelblue", "color": "white"}
+    }
+    st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
+    
+    # Display the combination of space and time windows that generated the alert
+    alert_table = influx_events[['hex_id', 'address', date_col, 'bin', 'Incident_count']]
+    st.write("Space and Time Windows that generated alerts:")
+    st.write(alert_table)
