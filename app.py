@@ -6,6 +6,47 @@ import googlemaps
 import pydeck as pdk
 from datetime import datetime
 
+def h3_to_address(h3_code, gmaps):
+    """Convert H3 code to a recognizable address using Google Maps API."""
+    # Convert H3 code to center latitude and longitude
+    lat, lon = h3.h3_to_geo(h3_code)
+    
+    # Use Google Maps Reverse Geocoding API
+    result = gmaps.reverse_geocode((lat, lon))
+    
+    # Extract the address or neighborhood name
+    if result and 'formatted_address' in result[0]:
+        return result[0]['formatted_address']
+    else:
+        return "Unknown Location"
+
+def spatid_v3(df, lat_col, lon_col, time_col, date_col, time_bin, spatial_resolution, threshold=None):
+    """Modified SpatioTemporal Influx Detection function to aggregate raw rows for each alarm."""
+    df = df.dropna(subset=[lat_col, lon_col, time_col, date_col]).copy()
+    
+    df["hex_id"] = df.apply(lambda row: h3.geo_to_h3(row[lat_col], row[lon_col], spatial_resolution), axis=1)
+    
+    df['time'] = df[time_col].apply(lambda x: datetime.strptime(x, '%H:%M:%S').time())
+    df['total_minutes'] = df['time'].apply(lambda x: x.hour*60 + x.minute)
+    df['bin'] = np.ceil(df['total_minutes'] / time_bin).astype(int)
+    
+    # Aggregate raw rows for each group
+    aggregated_data = df.groupby([date_col, 'hex_id', 'bin']).apply(lambda group: group.to_dict(orient='records')).reset_index(name='raw_rows')
+    incident_counts = df.groupby([date_col, 'hex_id', 'bin']).size().reset_index(name='Incident_count')
+    
+    grouped_data = pd.merge(aggregated_data, incident_counts, on=[date_col, 'hex_id', 'bin'])
+    
+    if threshold is None:
+        threshold_data = grouped_data.groupby('hex_id')['Incident_count'].quantile(0.95).reset_index(name='Threshold')
+        grouped_data = pd.merge(grouped_data, threshold_data, on='hex_id')
+        threshold = grouped_data['Threshold']
+    else:
+        grouped_data['Threshold'] = threshold
+    
+    influx_events = grouped_data[grouped_data['Incident_count'] >= threshold]
+    
+    return influx_events
+
 # Functions for SpatioTemporal Influx Detection (from previous discussions)
 # [Include the spatid_v3 and h3_to_address functions here]
 
@@ -64,51 +105,4 @@ if uploaded_file:
             "style": {"backgroundColor": "steelblue", "color": "white"}
         }
         st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
-
-import googlemaps
-import h3
-from datetime import datetime
-import numpy as np
-import pandas as pd
-
-def h3_to_address(h3_code, gmaps):
-    """Convert H3 code to a recognizable address using Google Maps API."""
-    # Convert H3 code to center latitude and longitude
-    lat, lon = h3.h3_to_geo(h3_code)
-    
-    # Use Google Maps Reverse Geocoding API
-    result = gmaps.reverse_geocode((lat, lon))
-    
-    # Extract the address or neighborhood name
-    if result and 'formatted_address' in result[0]:
-        return result[0]['formatted_address']
-    else:
-        return "Unknown Location"
-
-def spatid_v3(df, lat_col, lon_col, time_col, date_col, time_bin, spatial_resolution, threshold=None):
-    """Modified SpatioTemporal Influx Detection function to aggregate raw rows for each alarm."""
-    df = df.dropna(subset=[lat_col, lon_col, time_col, date_col]).copy()
-    
-    df["hex_id"] = df.apply(lambda row: h3.geo_to_h3(row[lat_col], row[lon_col], spatial_resolution), axis=1)
-    
-    df['time'] = df[time_col].apply(lambda x: datetime.strptime(x, '%H:%M:%S').time())
-    df['total_minutes'] = df['time'].apply(lambda x: x.hour*60 + x.minute)
-    df['bin'] = np.ceil(df['total_minutes'] / time_bin).astype(int)
-    
-    # Aggregate raw rows for each group
-    aggregated_data = df.groupby([date_col, 'hex_id', 'bin']).apply(lambda group: group.to_dict(orient='records')).reset_index(name='raw_rows')
-    incident_counts = df.groupby([date_col, 'hex_id', 'bin']).size().reset_index(name='Incident_count')
-    
-    grouped_data = pd.merge(aggregated_data, incident_counts, on=[date_col, 'hex_id', 'bin'])
-    
-    if threshold is None:
-        threshold_data = grouped_data.groupby('hex_id')['Incident_count'].quantile(0.95).reset_index(name='Threshold')
-        grouped_data = pd.merge(grouped_data, threshold_data, on='hex_id')
-        threshold = grouped_data['Threshold']
-    else:
-        grouped_data['Threshold'] = threshold
-    
-    influx_events = grouped_data[grouped_data['Incident_count'] >= threshold]
-    
-    return influx_events
 
