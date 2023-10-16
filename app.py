@@ -91,9 +91,9 @@ if st.button('Process Data'):
 
     # Display results on map
     view_state = pdk.ViewState(
-        latitude=influx_events["lat"].mean(),
-        longitude=influx_events["lon"].mean(),
-        zoom=10
+    latitude=influx_events["lat"].mean(),
+    longitude=influx_events["lon"].mean(),
+    zoom=10
     )
     
     layer = pdk.Layer(
