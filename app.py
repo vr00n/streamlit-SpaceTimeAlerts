@@ -87,8 +87,6 @@ if st.button('Process Data'):
     # Create a copy of influx_events without the 'raw_rows' column for mapping
     map_data = influx_events.drop(columns=['raw_rows'])
 
-...
-
     # Display results on map
     view_state = pdk.ViewState(
     latitude=influx_events["lat"].mean(),
