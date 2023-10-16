@@ -89,13 +89,14 @@ if st.button('Process Data'):
 
     # Display results on map
     view_state = pdk.ViewState(
-        latitude=influx_events["lat"].mean(),
-        longitude=influx_events["lon"].mean(),
-        zoom=10
+    latitude=influx_events["lat"].mean(),
+    longitude=influx_events["lon"].mean(),
+    zoom=10
     )
+
     layer = pdk.Layer(
         "HexagonLayer",
-        data=map_data,
+        data=map_data.to_dict(orient="records"),  # Convert DataFrame to list of dictionaries
         get_hexagon="hex_id",
         get_position=["lon", "lat"],
         get_fill_color="[255, 0, 0]",
@@ -105,10 +106,12 @@ if st.button('Process Data'):
         extruded=True,
         pickable=True
     )
+    
     tooltip = {
         "html": "<b>Address:</b> {address}<br/><b>Incident Count:</b> {Incident_count}",
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
+    
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
     
     # Display the combination of space and time windows that generated the alert
