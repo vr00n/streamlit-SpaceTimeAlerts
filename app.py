@@ -89,14 +89,14 @@ if st.button('Process Data'):
 
     # Display results on map
     view_state = pdk.ViewState(
-    latitude=influx_events["lat"].mean(),
-    longitude=influx_events["lon"].mean(),
-    zoom=10
+        latitude=influx_events["lat"].mean(),
+        longitude=influx_events["lon"].mean(),
+        zoom=10
     )
-
+    
     layer = pdk.Layer(
         "HexagonLayer",
-        data=map_data.to_dict(orient="records"),  # Convert DataFrame to list of dictionaries
+        data=map_data,  # Use DataFrame directly
         get_hexagon="hex_id",
         get_position=["lon", "lat"],
         get_fill_color="[255, 0, 0]",
@@ -108,7 +108,7 @@ if st.button('Process Data'):
     )
     
     tooltip = {
-        "html": "<b>Address:</b> {address}<br/><b>Incident Count:</b> {Incident_count}",
+        "html": "<b>Address:</b> {address.value}<br/><b>Incident Count:</b> {Incident_count.value}",
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
     
