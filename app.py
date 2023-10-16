@@ -69,8 +69,6 @@ if uploaded_file:
     spatial_resolution = st.slider("Choose H3 Spatial Resolution (0-15):", 0, 15, 7)
     time_bin = st.slider("Choose Temporal Window (in minutes):", 15, 180, 60)
 
-...
-
 if st.button('Process Data'):
     # Fetch influx events
     influx_events = spatid_v3(df, lat_col, lon_col, time_col, date_col, time_bin, spatial_resolution)
@@ -92,25 +90,30 @@ if st.button('Process Data'):
     latitude=influx_events["lat"].mean(),
     longitude=influx_events["lon"].mean(),
     zoom=10
-    )
-    
+)
+
     layer = pdk.Layer(
-        "ScatterplotLayer",
+        "HexagonLayer",
         data=map_data,  # Use DataFrame directly
+        id='hexagon-layer',
         get_position=["lon", "lat"],
-        get_radius=500,  # Adjust based on the desired appearance
-        get_fill_color="[255, 0, 0, 180]",  # Semi-transparent
+        get_fill_color="[255, 0, 0]",
         get_line_color="[0, 0, 0]",
-        stroked=True,
-        pickable=True
-    )
-    
+        filled=True,
+        extruded=True,
+        pickable=True,
+        elevationScale=1000,  # Adjust this value for desired appearance
+        elevationRange=[0, 1000],  # Adjust this range based on the incident counts
+        coverage=0.9  # Adjust for hexagon size
+)
+
     tooltip = {
         "html": "<b>Address:</b> {address}<br/><b>Incident Count:</b> {Incident_count}",
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
-    
+
     st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
+
     
     # Display the combination of space and time windows that generated the alert
     alert_table = influx_events[['hex_id', 'address', date_col, 'bin', 'Incident_count']]
