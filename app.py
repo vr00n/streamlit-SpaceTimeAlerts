@@ -87,6 +87,8 @@ if st.button('Process Data'):
     # Create a copy of influx_events without the 'raw_rows' column for mapping
     map_data = influx_events.drop(columns=['raw_rows'])
 
+...
+
     # Display results on map
     view_state = pdk.ViewState(
         latitude=influx_events["lat"].mean(),
@@ -95,20 +97,18 @@ if st.button('Process Data'):
     )
     
     layer = pdk.Layer(
-        "HexagonLayer",
+        "ScatterplotLayer",
         data=map_data,  # Use DataFrame directly
-        get_hexagon="hex_id",
         get_position=["lon", "lat"],
-        get_fill_color="[255, 0, 0]",
+        get_radius=500,  # Adjust based on the desired appearance
+        get_fill_color="[255, 0, 0, 180]",  # Semi-transparent
         get_line_color="[0, 0, 0]",
-        filled=True,
         stroked=True,
-        extruded=True,
         pickable=True
     )
     
     tooltip = {
-        "html": "<b>Address:</b> {address.value}<br/><b>Incident Count:</b> {Incident_count.value}",
+        "html": "<b>Address:</b> {address}<br/><b>Incident Count:</b> {Incident_count}",
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
     
