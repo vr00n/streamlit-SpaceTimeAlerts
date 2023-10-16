@@ -76,12 +76,16 @@ if uploaded_file:
         # Initialize Google Maps API
         gmaps = googlemaps.Client(key='AIzaSyBIn9U1eB5eYb8fD9N3hR-2Rhm8yP2G5Pk')
 
+
         # Get address for each H3 code
         influx_events["address"] = influx_events["hex_id"].apply(lambda x: h3_to_address(x, gmaps))
 
+
         # Convert H3 codes to latitude and longitude for mapping
         influx_events["lat"], influx_events["lon"] = zip(*influx_events["hex_id"].apply(h3.h3_to_geo))
-        
+
+         map_data = influx_events.drop(columns=['raw_rows'])
+
         # Display results on map
         view_state = pdk.ViewState(
             latitude=influx_events["lat"].mean(),
@@ -90,7 +94,7 @@ if uploaded_file:
         )
         layer = pdk.Layer(
             "HexagonLayer",
-            data=influx_events,
+            data=map_data,
             get_hexagon="hex_id",
             get_position=["lon", "lat"],
             get_fill_color="[255, 0, 0]",
@@ -105,4 +109,8 @@ if uploaded_file:
             "style": {"backgroundColor": "steelblue", "color": "white"}
         }
         st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
-
+        
+        # Additional code to display raw rows (optional)
+        selected_hex = st.selectbox("Select a hex to view its raw rows:", influx_events['hex_id'].unique())
+        selected_rows = influx_events[influx_events['hex_id'] == selected_hex]['raw_rows'].iloc[0]
+        st.write(pd.DataFrame(selected_rows))
